@@ -1,19 +1,7 @@
 {
-  "$schema": "[https://openapi.vercel.sh/vercel.json](https://openapi.vercel.sh/vercel.json)",
-  
-  "headers": [
-    {
-      "source": "/api/:path*",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store"
-        },
-        {
-          "key": "x-vercel-enable-rewrite-caching",
-          "value": "0"
-        }
-      ]
-    }
+  "buildCommand": "",
+  "outputDirectory": "frontend",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
