@@ -1,0 +1,26 @@
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Local database credentials
+backend/config/db.local.php
+
+# Logs
+*.log
+error_log
+
+# Private backups and database dumps
+backups/
+private/
+*.sql.gz
+*.sql.zip
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Deployment metadata
+.vercel/
