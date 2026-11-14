@@ -69,6 +69,9 @@
   let savedViews = [];
   let dashboard = null;
 
+  let adminData = { users: [], overview: null };
+  const authTouched = new Set();
+
   let activePage = "overview";
   let currentPage = 1;
   let editingId = null;
@@ -184,6 +187,14 @@
       currentUser &&
       ["staff", "admin"].includes(currentUser.role)
     );
+  }
+
+  function isAdmin() {
+    return Boolean(currentUser && currentUser.role === "admin");
+  }
+
+  function isResident() {
+    return Boolean(currentUser && !isStaff());
   }
 
   function canEdit(record) {
@@ -360,6 +371,7 @@
     records = [];
     savedViews = [];
     dashboard = null;
+    adminData = { users: [], overview: null };
     selectedIds.clear();
   }
 
@@ -557,6 +569,8 @@
     $("#demoAccountsBox").hidden = true;
     $("#authRoleField").hidden = true;
 
+    applyRoleUI();
+
     if (!currentUser) return;
 
     const initials = currentUser.name
@@ -608,27 +622,41 @@
     $("#authSubmitBtn").textContent =
       registering ? "Create account" : "Sign In";
 
+    $("#authIntro").hidden = !registering;
     $("#authNameField").hidden = !registering;
     $("#authBrgyField").hidden = !registering;
+    $("#authConfirmField").hidden = !registering;
+    $("#authConsentField").hidden = !registering;
+    $("#aPwMeter").hidden = !registering;
+    $("#aPwRules").hidden = !registering;
 
     $("#authRoleField").hidden = true;
     $("#demoAccountsBox").hidden = true;
 
-    $("#aName").required = registering;
-    $("#aPassword").minLength = registering ? 12 : 1;
     $("#aPassword").placeholder = registering
-      ? "At least 12 characters"
+      ? "Create a strong password"
       : "Enter your password";
 
     $("#aPassword").autocomplete = registering
       ? "new-password"
       : "current-password";
 
-    $("#authGeneralError").textContent = "";
+    $("#aPassword").value = "";
+    $("#aConfirm").value = "";
+    $("#aConsent").checked = false;
 
-    $$("[data-auth-error]").forEach(element => {
-      element.textContent = "";
+    $$("[data-pw-toggle]").forEach(button => {
+      $("#" + button.dataset.pwToggle).type = "password";
+      button.setAttribute("aria-pressed", "false");
+      button.setAttribute("aria-label", "Show password");
     });
+
+    authTouched.clear();
+    clearAuthFieldStates();
+    renderPasswordStrength();
+
+    $("#authGeneralError").textContent = "";
+    $("#aCapsWarn").hidden = true;
 
     $$("[data-auth-mode]").forEach(button => {
       button.classList.toggle(
@@ -638,7 +666,198 @@
     });
   }
 
-  function requireLogin() {
+  /* ---------- Authentication form validation ---------- */
+
+  const authInputs = {
+    name: "#aName",
+    email: "#aEmail",
+    password: "#aPassword",
+    confirm: "#aConfirm",
+    consent: "#aConsent"
+  };
+
+  function clearAuthFieldStates() {
+    Object.entries(authInputs).forEach(([field, selector]) => {
+      const input = $(selector);
+      const wrapper = input.closest(".field");
+
+      wrapper?.classList.remove("invalid", "valid");
+      input.removeAttribute("aria-invalid");
+
+      const error = $(`[data-auth-error="${field}"]`);
+      if (error) error.textContent = "";
+    });
+  }
+
+  function authFieldsForMode() {
+    return authMode === "register"
+      ? ["name", "email", "password", "confirm", "consent"]
+      : ["email", "password"];
+  }
+
+  function validateAuthField(field) {
+    const check = window.PortalValidate;
+    const registering = authMode === "register";
+
+    const email = $("#aEmail").value;
+    const name = $("#aName").value;
+    const password = $("#aPassword").value;
+
+    switch (field) {
+      case "name":
+        return registering
+          ? check.name(name)
+          : { ok: true, message: "" };
+
+      case "email":
+        return check.email(email);
+
+      case "password":
+        return registering
+          ? check.password(password, { email, name })
+          : check.loginPassword(password);
+
+      case "confirm":
+        return registering
+          ? check.confirm($("#aConfirm").value, password)
+          : { ok: true, message: "" };
+
+      case "consent":
+        return registering && !$("#aConsent").checked
+          ? {
+              ok: false,
+              message:
+                "You must agree before an account can be created."
+            }
+          : { ok: true, message: "" };
+
+      default:
+        return { ok: true, message: "" };
+    }
+  }
+
+  function showAuthField(field, force = false) {
+    if (!force && !authTouched.has(field)) return null;
+
+    const result = validateAuthField(field);
+    const input = $(authInputs[field]);
+    const wrapper = input.closest(".field");
+    const error = $(`[data-auth-error="${field}"]`);
+
+    const hasValue = field === "consent"
+      ? input.checked
+      : input.value.length > 0;
+
+    wrapper.classList.toggle("invalid", !result.ok);
+    wrapper.classList.toggle("valid", result.ok && hasValue);
+
+    input.setAttribute("aria-invalid", String(!result.ok));
+
+    if (error) {
+      error.textContent = result.ok ? "" : result.message;
+    }
+
+    return result;
+  }
+
+  function renderPasswordStrength() {
+    if (authMode !== "register") return;
+
+    const check = window.PortalValidate;
+    const password = $("#aPassword").value;
+
+    const result = check.password(password, {
+      email: $("#aEmail").value,
+      name: $("#aName").value
+    });
+
+    $("#aPwMeter").dataset.score = String(result.score);
+
+    $("#aPwLabel").textContent = password
+      ? `Password strength: ${result.label}`
+      : "Enter a password";
+
+    $("#aPwRules").innerHTML = result.checks.map(item => `
+      <li class="${
+        password ? (item.pass ? "met" : "unmet") : ""
+      }">${escapeHTML(item.label)}</li>
+    `).join("");
+  }
+
+  function bindAuthValidation() {
+    ["name", "email", "password", "confirm"].forEach(field => {
+      const input = $(authInputs[field]);
+
+      input.addEventListener("blur", () => {
+        if (input.value.length > 0 || authTouched.has(field)) {
+          authTouched.add(field);
+          showAuthField(field);
+        }
+      });
+
+      input.addEventListener("input", () => {
+        if ($("#authGeneralError").textContent.startsWith("Please correct")) {
+          $("#authGeneralError").textContent = "";
+        }
+
+        showAuthField(field);
+
+        if (authMode === "register") {
+          renderPasswordStrength();
+
+          if (field === "password") {
+            showAuthField("confirm");
+          }
+
+          if (field === "name" || field === "email") {
+            showAuthField("password");
+          }
+        }
+      });
+    });
+
+    $("#aConsent").addEventListener("change", () => {
+      authTouched.add("consent");
+      showAuthField("consent");
+    });
+
+    $$("[data-pw-toggle]").forEach(button => {
+      button.addEventListener("click", () => {
+        const input = $("#" + button.dataset.pwToggle);
+        const show = input.type === "password";
+
+        input.type = show ? "text" : "password";
+
+        button.setAttribute("aria-pressed", String(show));
+        button.setAttribute(
+          "aria-label",
+          show ? "Hide password" : "Show password"
+        );
+
+        input.focus();
+      });
+    });
+
+    ["#aPassword", "#aConfirm"].forEach(selector => {
+      const input = $(selector);
+
+      const updateCaps = event => {
+        const caps = Boolean(
+          event.getModifierState && event.getModifierState("CapsLock")
+        );
+
+        $("#aCapsWarn").hidden = !caps;
+      };
+
+      input.addEventListener("keydown", updateCaps);
+      input.addEventListener("keyup", updateCaps);
+      input.addEventListener("blur", () => {
+        $("#aCapsWarn").hidden = true;
+      });
+    });
+  }
+
+    function requireLogin() {
     if (currentUser) return true;
 
     setAuthMode("login");
@@ -652,35 +871,37 @@
 
     if (authSubmitting) return;
 
-    const email = $("#aEmail").value.trim().toLowerCase();
-    const password = $("#aPassword").value;
-    const name = $("#aName").value.trim();
-
     $("#authGeneralError").textContent = "";
 
-    if (!email || !$("#aEmail").validity.valid) {
+    const fields = authFieldsForMode();
+
+    let firstInvalid = null;
+
+    fields.forEach(field => {
+      authTouched.add(field);
+
+      const result = showAuthField(field, true);
+
+      if (result && !result.ok && !firstInvalid) {
+        firstInvalid = field;
+      }
+    });
+
+    renderPasswordStrength();
+
+    if (firstInvalid) {
       $("#authGeneralError").textContent =
-        "Enter a valid email address.";
+        "Please correct the highlighted fields and try again.";
+
+      $(authInputs[firstInvalid]).focus();
       return;
     }
 
-    if (!password) {
-      $("#authGeneralError").textContent =
-        "Enter your password.";
-      return;
-    }
+    const check = window.PortalValidate;
 
-    if (authMode === "register" && !name) {
-      $("#authGeneralError").textContent =
-        "Enter your full name.";
-      return;
-    }
-
-    if (authMode === "register" && password.length < 12) {
-      $("#authGeneralError").textContent =
-        "Use a password with at least 12 characters.";
-      return;
-    }
+    const email = check.email($("#aEmail").value).value;
+    const name = check.name($("#aName").value).value;
+    const password = $("#aPassword").value;
 
     authSubmitting = true;
 
@@ -704,9 +925,11 @@
 
       if (authMode === "register") {
         setAuthMode("login");
-        $("#aPassword").value = "";
+        $("#aEmail").value = email;
 
-        toast("Account created. Sign in with your new password.");
+        toast(response.message || "Account created. You can now sign in.");
+
+        $("#aPassword").focus();
         return;
       }
 
@@ -729,6 +952,16 @@
           "Signed in, but some portal data could not load. " +
           error.message
         );
+      } else if (error.status === 409 && authMode === "register") {
+        authTouched.add("email");
+
+        const wrapper = $("#aEmail").closest(".field");
+
+        wrapper.classList.add("invalid");
+        wrapper.classList.remove("valid");
+
+        $('[data-auth-error="email"]').textContent = error.message;
+        $("#aEmail").focus();
       } else {
         $("#authGeneralError").textContent = error.message;
       }
@@ -769,6 +1002,120 @@
      Dashboard
      ========================================================= */
 
+  function residentCards() {
+    const mine = records.filter(record => record.type === "request");
+
+    const open = mine.filter(
+      record => !["resolved", "cancelled"].includes(record.statusCode)
+    );
+
+    const resolved = mine.filter(
+      record => record.statusCode === "resolved"
+    );
+
+    const latest = mine
+      .map(record => record.updatedAt || record.createdAt || "")
+      .sort()
+      .pop();
+
+    return [
+      {
+        title: "My requests",
+        value: number(mine.length),
+        foot: "All requests you have submitted",
+        icon: "i-clipboard",
+        color: "blue"
+      },
+      {
+        title: "In progress",
+        value: number(open.length),
+        foot: "Waiting for City Hall action",
+        icon: "i-clock",
+        color: "gold"
+      },
+      {
+        title: "Resolved",
+        value: number(resolved.length),
+        foot: "Completed by the service desk",
+        icon: "i-check",
+        color: "green"
+      },
+      {
+        title: "Last update",
+        value: latest ? dateLabel(latest).split(",").slice(0, 2).join(",") : "—",
+        foot: latest ? "Most recent activity" : "No requests yet",
+        icon: "i-inbox",
+        color: "purple"
+      }
+    ];
+  }
+
+  function residentStatusRows() {
+    const counts = new Map();
+
+    records
+      .filter(record => record.type === "request")
+      .forEach(record => {
+        counts.set(
+          record.statusCode,
+          (counts.get(record.statusCode) || 0) + 1
+        );
+      });
+
+    return config.request.sequence
+      .concat(["cancelled"])
+      .filter(code => counts.has(code))
+      .map(code => ({
+        label: statusLabel("request", code),
+        value: counts.get(code)
+      }));
+  }
+
+  /* =========================================================
+     Role-based interface
+     ========================================================= */
+
+  function applyRoleUI() {
+    const resident = isResident();
+
+    $("#adminNavBtn").hidden = !isAdmin();
+
+    $$('[data-nav="transactions"], [data-nav="received"]').forEach(
+      button => {
+        button.hidden = resident;
+      }
+    );
+
+    $$('[data-quick="transaction"], [data-quick="received"]').forEach(
+      button => {
+        button.hidden = resident;
+      }
+    );
+
+    $("#viewAllBtn").hidden = resident;
+    $("#heroBody").hidden = resident;
+
+    const line = $("#welcomeLine");
+
+    if (!currentUser) {
+      line.hidden = true;
+    } else {
+      line.hidden = false;
+
+      const first = String(currentUser.name || "").split(" ")[0];
+
+      line.textContent = resident
+        ? `Welcome back, ${first}. Here is where your requests stand.`
+        : isAdmin()
+          ? `Welcome back, ${first} · Administrator`
+          : `Welcome back, ${first} · Service desk`;
+    }
+
+    if (activePage === "admin" && !isAdmin()) {
+      navigate("overview");
+    }
+  }
+
   function renderOverview() {
     const stats = dashboard?.stats || {
       transactions: 0,
@@ -777,7 +1124,7 @@
       collections: 0
     };
 
-    const cards = [
+    let cards = [
       {
         title: "Transactions",
         value: number(stats.transactions),
@@ -807,6 +1154,10 @@
         color: "green"
       }
     ];
+
+    if (isResident()) {
+      cards = residentCards();
+    }
 
     $("#statsGrid").innerHTML = cards.map(card => `
       <article class="stat-card">
@@ -872,6 +1223,26 @@
           }
         </p>
       `;
+
+    const resident = isResident();
+
+    $("#residentStatusCard").hidden = !resident;
+    $("#collectionsCard").hidden = resident;
+    $("#barangayCard").hidden = resident;
+
+    if (resident) {
+      const rows = residentStatusRows();
+
+      $("#residentStatusUnit").textContent =
+        `${number(rows.reduce((sum, row) => sum + row.value, 0))} total`;
+
+      renderChart(
+        $("#residentStatusChart"),
+        rows,
+        false,
+        "var(--blue)"
+      );
+    }
 
     renderChart(
       $("#collectionsChart"),
@@ -1269,18 +1640,34 @@
   function renderAll() {
     renderOverview();
 
-    if (activePage !== "overview") {
+    if (activePage === "admin") {
+      renderAdmin();
+    } else if (activePage !== "overview") {
       renderRecords();
     }
   }
 
   function navigate(destination) {
+    if (destination === "admin" && !isAdmin()) {
+      destination = "overview";
+    }
+
+    if (
+      isResident() &&
+      ["transactions", "received"].includes(destination)
+    ) {
+      destination = "requests";
+    }
+
     activePage = destination;
     currentPage = 1;
     selectedIds.clear();
 
     $("#overviewPage").hidden = destination !== "overview";
-    $("#recordsPage").hidden = destination === "overview";
+    $("#adminPage").hidden = destination !== "admin";
+
+    $("#recordsPage").hidden =
+      destination === "overview" || destination === "admin";
 
     $$("[data-nav]").forEach(button => {
       const active = button.dataset.nav === destination;
@@ -1294,7 +1681,7 @@
       }
     });
 
-    if (destination !== "overview") {
+    if (destination !== "overview" && destination !== "admin") {
       $("#searchInput").value = "";
       $("#sortSelect").value = "newest";
 
@@ -1303,6 +1690,10 @@
     }
 
     renderAll();
+
+    if (destination === "admin") {
+      loadAdmin();
+    }
   }
 
   function resetFilters() {
@@ -2257,6 +2648,324 @@
   }
 
   /* =========================================================
+     Admin dashboard
+     ========================================================= */
+
+  const roleNames = {
+    resident: "Resident",
+    staff: "Staff",
+    admin: "Administrator"
+  };
+
+  async function loadAdmin() {
+    if (!isAdmin()) return;
+
+    try {
+      const [overview, users] = await Promise.all([
+        api("admin.php?view=overview"),
+        api("admin.php?view=users")
+      ]);
+
+      adminData = {
+        overview: overview.overview,
+        users: users.users
+      };
+
+      renderAdmin();
+
+    } catch (error) {
+      toast(error.message);
+    }
+  }
+
+  function renderAdmin() {
+    if (!isAdmin()) return;
+
+    const overview = adminData.overview;
+    const stats = overview?.users || {};
+    const recordStats = overview?.records || {};
+
+    const cards = [
+      {
+        title: "Total users",
+        value: number(stats.total),
+        foot: `${number(stats.newThisWeek)} joined in the last 7 days`,
+        footClass: stats.newThisWeek > 0 ? "up" : "",
+        icon: "i-user",
+        color: "blue"
+      },
+      {
+        title: "Residents",
+        value: number(stats.residents),
+        foot: "Registered citizens",
+        icon: "i-user",
+        color: "gold"
+      },
+      {
+        title: "Staff & admins",
+        value: number((stats.staff || 0) + (stats.admins || 0)),
+        foot: `${number(stats.admins)} administrator(s)`,
+        icon: "i-building",
+        color: "purple"
+      },
+      {
+        title: "Deactivated",
+        value: number(stats.inactive),
+        foot: "Accounts blocked from signing in",
+        footClass: stats.inactive > 0 ? "down" : "",
+        icon: "i-close",
+        color: "green"
+      },
+      {
+        title: "Open records",
+        value: number(recordStats.open),
+        foot: `${number(recordStats.total)} total · ${number(recordStats.deleted)} deleted`,
+        icon: "i-clipboard",
+        color: "blue"
+      }
+    ];
+
+    $("#adminStats").innerHTML = cards.map(card => `
+      <article class="stat-card">
+        <div class="stat-top">
+          <span>${escapeHTML(card.title)}</span>
+
+          <span class="stat-icon ${card.color}">
+            ${icon(card.icon)}
+          </span>
+        </div>
+
+        <strong class="stat-value">${escapeHTML(card.value)}</strong>
+
+        <span class="stat-foot ${card.footClass || ""}">
+          ${escapeHTML(card.foot)}
+        </span>
+      </article>
+    `).join("");
+
+    renderAdminUsers();
+    renderAdminActivity();
+  }
+
+  function filteredAdminUsers() {
+    const query = $("#adminSearch").value.trim().toLowerCase();
+    const role = $("#adminRoleFilter").value;
+    const status = $("#adminStatusFilter").value;
+
+    return adminData.users.filter(user => {
+      const matches = !query
+        || user.name.toLowerCase().includes(query)
+        || user.email.toLowerCase().includes(query);
+
+      return matches
+        && (!role || user.role === role)
+        && (
+          !status
+          || (status === "active" ? user.active : !user.active)
+        );
+    });
+  }
+
+  function renderAdminUsers() {
+    const users = filteredAdminUsers();
+
+    $("#adminUserCount").textContent =
+      `${number(users.length)} of ${number(adminData.users.length)} account(s)`;
+
+    $("#adminEmpty").hidden = users.length > 0;
+
+    $("#adminUserBody").innerHTML = users.map(user => {
+      const self = sameId(user.id, currentUser?.id);
+
+      const initials = user.name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0])
+        .join("")
+        .toUpperCase();
+
+      return `
+        <tr class="${user.active ? "" : "inactive-row"}">
+          <td>
+            <div class="user-cell">
+              <span class="avatar">${escapeHTML(initials)}</span>
+
+              <span>
+                <strong>
+                  ${escapeHTML(user.name)}
+                  ${self ? '<span class="you-tag">You</span>' : ""}
+                </strong>
+
+                <small>${escapeHTML(user.email)}</small>
+              </span>
+            </div>
+          </td>
+
+          <td>
+            <select
+              class="role-select"
+              data-role-user="${escapeHTML(user.id)}"
+              aria-label="Role for ${escapeHTML(user.name)}"
+              ${self ? "disabled" : ""}
+            >
+              ${Object.entries(roleNames).map(([value, label]) => `
+                <option value="${value}" ${user.role === value ? "selected" : ""}>
+                  ${label}
+                </option>
+              `).join("")}
+            </select>
+          </td>
+
+          <td>${escapeHTML(user.barangay || "Other / Not listed")}</td>
+
+          <td>
+            <span class="badge ${user.active ? "success" : "danger"}">
+              ${user.active ? "Active" : "Deactivated"}
+            </span>
+          </td>
+
+          <td>${escapeHTML(dateLabel(user.createdAt))}</td>
+
+          <td>
+            ${
+              user.lastLoginAt
+                ? escapeHTML(dateLabel(user.lastLoginAt))
+                : '<span class="subtle">Never</span>'
+            }
+          </td>
+
+          <td>
+            <div class="row-actions">
+              ${
+                self
+                  ? ""
+                  : `<button
+                      class="btn small ${user.active ? "danger-quiet" : ""}"
+                      type="button"
+                      data-toggle-user="${escapeHTML(user.id)}"
+                    >
+                      ${user.active ? "Deactivate" : "Reactivate"}
+                    </button>`
+              }
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function renderAdminActivity() {
+    const items = adminData.overview?.activity || [];
+
+    $("#adminActivity").innerHTML = items.length
+      ? items.map(item => `
+        <div class="timeline-item">
+          <strong>${escapeHTML(item.label)}</strong>
+
+          <small>
+            ${escapeHTML(item.ref || "")}
+            · ${escapeHTML(item.actor || "System")}
+          </small>
+
+          <small>${escapeHTML(dateLabel(item.at))}</small>
+        </div>
+      `).join("")
+      : '<p class="chart-empty">No activity recorded yet.</p>';
+  }
+
+  async function changeUserRole(id, role) {
+    try {
+      await api("admin.php", {
+        method: "POST",
+        body: { action: "setRole", id, role }
+      });
+
+      toast(`Role updated to ${roleNames[role]}.`);
+    } catch (error) {
+      toast(error.message);
+    }
+
+    await loadAdmin();
+  }
+
+  async function changeUserActive(id, active) {
+    try {
+      await api("admin.php", {
+        method: "POST",
+        body: { action: "setActive", id, active }
+      });
+
+      toast(active ? "Account reactivated." : "Account deactivated.");
+    } catch (error) {
+      toast(error.message);
+    }
+
+    await loadAdmin();
+  }
+
+  function bindAdminEvents() {
+    $("#adminRefreshBtn").addEventListener("click", loadAdmin);
+
+    ["#adminSearch", "#adminRoleFilter", "#adminStatusFilter"].forEach(
+      selector => {
+        $(selector).addEventListener("input", renderAdminUsers);
+        $(selector).addEventListener("change", renderAdminUsers);
+      }
+    );
+
+    $("#adminUserBody").addEventListener("change", event => {
+      const select = event.target.closest("[data-role-user]");
+
+      if (!select) return;
+
+      const user = adminData.users.find(
+        entry => sameId(entry.id, select.dataset.roleUser)
+      );
+
+      if (!user || user.role === select.value) return;
+
+      const role = select.value;
+
+      // Put the previous value back until the admin confirms.
+      renderAdminUsers();
+
+      confirmAction(
+        "Change role?",
+        `${user.name} will become ${roleNames[role]}. ` +
+        (role === "resident"
+          ? "They will lose access to staff tools."
+          : "They will gain access to staff tools."),
+        () => changeUserRole(user.id, role),
+        "Change role"
+      );
+    });
+
+    $("#adminUserBody").addEventListener("click", event => {
+      const button = event.target.closest("[data-toggle-user]");
+
+      if (!button) return;
+
+      const user = adminData.users.find(
+        entry => sameId(entry.id, button.dataset.toggleUser)
+      );
+
+      if (!user) return;
+
+      const makeActive = !user.active;
+
+      confirmAction(
+        makeActive ? "Reactivate account?" : "Deactivate account?",
+        makeActive
+          ? `${user.name} will be able to sign in again.`
+          : `${user.name} will be blocked from signing in. Their records are kept.`,
+        () => changeUserActive(user.id, makeActive),
+        makeActive ? "Reactivate" : "Deactivate"
+      );
+    });
+  }
+
+  /* =========================================================
      Event bindings
      ========================================================= */
 
@@ -2498,6 +3207,9 @@
       "submit",
       handleAuthentication
     );
+
+    bindAuthValidation();
+    bindAdminEvents();
 
     $("#userChipBtn").addEventListener("click", () => {
       const expanded = $("#userDropdown").hidden;
