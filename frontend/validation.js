@@ -223,6 +223,28 @@
     return { ok: true, value, message: "" };
   }
 
+  function barangay(value) {
+    const id = String(value ?? "").trim();
+
+    if (!id) {
+      return {
+        ok: false,
+        value: "",
+        message: "Select your barangay from the list."
+      };
+    }
+
+    if (!/^[1-9]\d{0,17}$/.test(id)) {
+      return {
+        ok: false,
+        value: "",
+        message: "Select a valid barangay from the list."
+      };
+    }
+
+    return { ok: true, value: id, message: "" };
+  }
+
   function loginPassword(value) {
     const text = String(value ?? "");
 
@@ -242,6 +264,7 @@
     email,
     password,
     confirm,
+    barangay,
     loginPassword,
     normalizeName
   };
