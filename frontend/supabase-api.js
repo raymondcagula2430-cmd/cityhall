@@ -254,13 +254,16 @@
       const passwordCheck = V.password(password, { email, name });
       if (!passwordCheck.ok) fail(passwordCheck.message);
 
+      const barangayCheck = V.barangay(body.barangayId);
+      if (!barangayCheck.ok) fail(barangayCheck.message);
+
       const { data, error } = await sb.auth.signUp({
         email,
         password,
         options: {
           data: {
             name,
-            barangay_id: body.barangayId || ""
+            barangay_id: barangayCheck.value
           }
         }
       });
