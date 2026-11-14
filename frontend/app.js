@@ -758,7 +758,8 @@
     const input = $(authInputs[field]);
 
 if (!input) {
-  return { ok: false };
+    console.error("Missing auth field:", field);
+    return { ok: false };
 }
 
 const wrapper = input.closest(".field");
