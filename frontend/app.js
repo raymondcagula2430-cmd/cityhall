@@ -5,7 +5,6 @@
      Configuration and state
      ========================================================= */
 
-  const API_BASE = "./api/";
   const PAGE_SIZE = 8;
 
   const $ = (selector, root = document) =>
@@ -324,67 +323,23 @@
      ========================================================= */
 
   async function api(file, options = {}) {
-    const method = options.method || "GET";
-
-    const settings = {
-      method,
-      credentials: "same-origin",
-      cache: "no-store",
-      headers: {
-        Accept: "application/json"
-      }
-    };
-
-    if (method !== "GET") {
-      settings.headers["Content-Type"] = "application/json";
-      settings.headers["X-CSRF-Token"] = csrf;
-      settings.body = JSON.stringify(options.body || {});
-    }
-
-    let response;
-
-    try {
-      response = await fetch(API_BASE + file, settings);
-    } catch {
-      throw new Error(
-        "Cannot reach the server. Make sure Apache and MySQL are running."
-      );
-    }
-
-    const raw = await response.text();
-
     let data;
 
     try {
-      data = JSON.parse(raw);
-    } catch {
-      console.error("Non-JSON API response:", raw);
-
-      throw new Error(
-        `The server returned an invalid response for ${file}. ` +
-        "Check the PHP error log."
-      );
-    }
-
-    if (data.csrf) {
-      csrf = data.csrf;
-    }
-
-    if (!response.ok || !data.ok) {
-      if (response.status === 401) {
+      data = await window.portalApi(file, options);
+    } catch (error) {
+      if (error.status === 401) {
         currentUser = null;
         clearAccountData();
         updateAuthUI();
         renderAll();
       }
 
-      const error = new Error(
-        data.message || "The request could not be completed."
-      );
-
-      error.status = response.status;
-
       throw error;
+    }
+
+    if (data.csrf) {
+      csrf = data.csrf;
     }
 
     return data;
