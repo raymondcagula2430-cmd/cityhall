@@ -239,20 +239,20 @@
     const action = body.action;
 
     if (action === "register") {
-      const name = String(body.name || "").trim();
-      const email = String(body.email || "").trim().toLowerCase();
+      const V = window.PortalValidate;
+
+      const nameCheck = V.name(body.name);
+      if (!nameCheck.ok) fail(nameCheck.message);
+
+      const emailCheck = V.email(body.email);
+      if (!emailCheck.ok) fail(emailCheck.message);
+
+      const name = nameCheck.value;
+      const email = emailCheck.value;
       const password = String(body.password || "");
 
-      if (!name) fail("Enter your name.");
-      if (name.length > 100) fail("Name is too long.");
-
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-        fail("Enter a valid email address.");
-      }
-
-      if (password.length < 12 || password.length > 72) {
-        fail("Use a password between 12 and 72 characters.");
-      }
+      const passwordCheck = V.password(password, { email, name });
+      if (!passwordCheck.ok) fail(passwordCheck.message);
 
       const { data, error } = await sb.auth.signUp({
         email,
@@ -627,6 +627,66 @@
   }
 
   /* -------------------------------------------------------------
+     admin.php (administrators only; enforced again in the database)
+     ------------------------------------------------------------- */
+
+  async function admin(method, query, body) {
+    await requireUser();
+
+    if (method === "GET") {
+      if (query.get("view") === "users") {
+        const { data, error } = await sb.rpc("admin_list_users");
+
+        check(error);
+
+        return {
+          ok: true,
+          users: data.map(u => ({
+            id: u.id,
+            name: u.full_name,
+            email: u.email,
+            role: u.role,
+            active: u.is_active,
+            barangay: u.barangay,
+            createdAt: u.created_at,
+            lastLoginAt: u.last_login_at
+          }))
+        };
+      }
+
+      const { data, error } = await sb.rpc("admin_overview");
+
+      check(error);
+
+      return { ok: true, overview: data };
+    }
+
+    if (body.action === "setRole") {
+      const { error } = await sb.rpc("admin_set_role", {
+        p_id: String(body.id),
+        p_role: String(body.role)
+      });
+
+      check(error);
+
+      return { ok: true, message: "Role updated." };
+    }
+
+    if (body.action === "setActive") {
+      const { error } = await sb.rpc("admin_set_active", {
+        p_id: String(body.id),
+        p_active: Boolean(body.active)
+      });
+
+      check(error);
+
+      return { ok: true, message: "Account updated." };
+    }
+
+    fail("Invalid administration action.");
+  }
+
+  /* -------------------------------------------------------------
      Router used by api() in app.js
      ------------------------------------------------------------- */
 
@@ -644,6 +704,7 @@
         case "status.php":    return await status(body);
         case "dashboard.php": return await dashboard();
         case "views.php":     return await views(method, body);
+        case "admin.php":     return await admin(method, query, body);
         default:              fail("Unknown endpoint.", 404);
       }
     } catch (error) {
