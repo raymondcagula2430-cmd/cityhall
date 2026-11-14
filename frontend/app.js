@@ -691,7 +691,14 @@
 
   function authFieldsForMode() {
     return authMode === "register"
-      ? ["name", "email", "password", "confirm", "consent"]
+      ? [
+  "name",
+  "email",
+  "barangay",
+  "password",
+  "confirm",
+  "consent"
+]
       : ["email", "password"];
   }
 
@@ -721,6 +728,13 @@
         return registering
           ? check.confirm($("#aConfirm").value, password)
           : { ok: true, message: "" };
+        case "barangay":
+  return $("#aBarangay").value
+    ? { ok: true, message: "" }
+    : {
+        ok: false,
+        message: "Please select your barangay."
+      };
 
       case "consent":
         return registering && !$("#aConsent").checked
