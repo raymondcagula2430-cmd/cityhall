@@ -189,6 +189,142 @@
     );
   }
 
+  /* =========================================================
+     QC e-Services directory
+     Names: official QC e-Services page. Summaries: written for
+     this project.
+     ========================================================= */
+
+  const OFFICIAL_ESERVICES_URL =
+    "https://quezoncity.gov.ph/program/qc-eservices/";
+
+  const servicesCatalog = [
+    {
+      name: "Building Permit Transactions and Payments",
+      group: "Permits & Licenses",
+      icon: "i-building",
+      summary: "Apply for, follow up and pay for building permit transactions."
+    },
+    {
+      name: "Business Permit Transactions and Payments",
+      group: "Permits & Licenses",
+      icon: "i-building",
+      summary: "Apply for or renew a business permit and settle the fees online."
+    },
+    {
+      name: "Occupational Work Permit Transactions",
+      group: "Permits & Licenses",
+      icon: "i-clipboard",
+      summary: "Process and pay for occupational work permits."
+    },
+    {
+      name: "Civil Registry Online Services",
+      group: "Civil & Identity",
+      icon: "i-inbox",
+      summary: "Request civil registry documents and services online."
+    },
+    {
+      name: "QCitizen ID Application",
+      group: "Civil & Identity",
+      icon: "i-user",
+      summary: "Apply for a QCitizen ID."
+    },
+    {
+      name: "Health Certificate Application & Sanitary Permit Application",
+      group: "Health",
+      icon: "i-check",
+      summary: "Apply for health certificates and sanitary permits."
+    },
+    {
+      name: "Medical Assistance Program",
+      group: "Health",
+      icon: "i-check",
+      summary: "Apply for the city's medical assistance."
+    },
+    {
+      name: "QC Pet Registration and Online Appointment",
+      group: "Health",
+      icon: "i-clock",
+      summary: "Register your pet and book an appointment online."
+    },
+    {
+      name: "Social Welfare Assistance Application",
+      group: "Welfare & Livelihood",
+      icon: "i-user",
+      summary: "Apply for social welfare assistance."
+    },
+    {
+      name: "Pangkabuhayang QC",
+      group: "Welfare & Livelihood",
+      icon: "i-clipboard",
+      summary: "The city's livelihood program."
+    },
+    {
+      name: "Startup QC Program",
+      group: "Welfare & Livelihood",
+      icon: "i-clipboard",
+      summary: "The city's program supporting startups."
+    },
+    {
+      name: "QC CSO (Civil Society Organization)",
+      group: "Welfare & Livelihood",
+      icon: "i-user",
+      summary: "Services for Civil Society Organizations in Quezon City."
+    },
+    {
+      name: "QC Housing",
+      group: "Property & Housing",
+      icon: "i-building",
+      summary: "City housing services and applications."
+    },
+    {
+      name: "Real Property Tax Payments",
+      group: "Property & Housing",
+      icon: "i-clipboard",
+      summary: "Pay real property tax online."
+    },
+    {
+      name: "QC Scholarship Application and Renewal",
+      group: "Education",
+      icon: "i-inbox",
+      summary: "Apply for or renew a city scholarship."
+    }
+  ];
+
+  function renderServices() {
+    const query = $("#servicesSearch").value.trim().toLowerCase();
+
+    const rows = servicesCatalog.filter(service =>
+      !query ||
+      service.name.toLowerCase().includes(query) ||
+      service.group.toLowerCase().includes(query) ||
+      service.summary.toLowerCase().includes(query)
+    );
+
+    $("#servicesEmpty").hidden = rows.length > 0;
+
+    $("#servicesGrid").innerHTML = rows.map(service => `
+      <article class="service-card">
+        <span class="service-icon">${icon(service.icon)}</span>
+
+        <span class="service-group">${escapeHTML(service.group)}</span>
+
+        <h3>${escapeHTML(service.name)}</h3>
+
+        <p>${escapeHTML(service.summary)}</p>
+
+        <a
+          class="btn small"
+          href="${OFFICIAL_ESERVICES_URL}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open official QC e-Services
+        </a>
+      </article>
+    `).join("");
+  }
+
   function isAdmin() {
     return Boolean(currentUser && currentUser.role === "admin");
   }
@@ -607,7 +743,7 @@
       $("#aBarangay"),
       lookups.barangays,
       "",
-      "Other / Not listed"
+      "Select your barangay"
     );
   }
 
@@ -644,6 +780,7 @@
     $("#aPassword").value = "";
     $("#aConfirm").value = "";
     $("#aConsent").checked = false;
+    $("#aBarangay").value = "";
 
     $$("[data-pw-toggle]").forEach(button => {
       $("#" + button.dataset.pwToggle).type = "password";
@@ -692,14 +829,7 @@
 
   function authFieldsForMode() {
     return authMode === "register"
-      ? [
-  "name",
-  "email",
-  "barangay",
-  "password",
-  "confirm",
-  "consent"
-]
+      ? ["name", "email", "password", "confirm", "barangay", "consent"]
       : ["email", "password"];
   }
 
@@ -730,12 +860,9 @@
           ? check.confirm($("#aConfirm").value, password)
           : { ok: true, message: "" };
         case "barangay":
-  return $("#aBarangay").value
-    ? { ok: true, message: "" }
-    : {
-        ok: false,
-        message: "Please select your barangay."
-      };
+        return registering
+          ? check.barangay($("#aBarangay").value)
+          : { ok: true, message: "" };
 
       case "consent":
         return registering && !$("#aConsent").checked
@@ -836,6 +963,11 @@ const wrapper = input.closest(".field");
           }
         }
       });
+    });
+
+    $("#aBarangay").addEventListener("change", () => {
+      authTouched.add("barangay");
+      showAuthField("barangay");
     });
 
     $("#aConsent").addEventListener("change", () => {
@@ -1664,6 +1796,8 @@ const wrapper = input.closest(".field");
 
     if (activePage === "admin") {
       renderAdmin();
+    } else if (activePage === "services") {
+      renderServices();
     } else if (activePage !== "overview") {
       renderRecords();
     }
@@ -1687,9 +1821,10 @@ const wrapper = input.closest(".field");
 
     $("#overviewPage").hidden = destination !== "overview";
     $("#adminPage").hidden = destination !== "admin";
+    $("#servicesPage").hidden = destination !== "services";
 
-    $("#recordsPage").hidden =
-      destination === "overview" || destination === "admin";
+    $("#recordsPage").hidden = ["overview", "admin", "services"]
+      .includes(destination);
 
     $$("[data-nav]").forEach(button => {
       const active = button.dataset.nav === destination;
@@ -1703,7 +1838,7 @@ const wrapper = input.closest(".field");
       }
     });
 
-    if (destination !== "overview" && destination !== "admin") {
+    if (!["overview", "admin", "services"].includes(destination)) {
       $("#searchInput").value = "";
       $("#sortSelect").value = "newest";
 
@@ -3232,6 +3367,8 @@ const wrapper = input.closest(".field");
 
     bindAuthValidation();
     bindAdminEvents();
+
+    $("#servicesSearch").addEventListener("input", renderServices);
 
     $("#userChipBtn").addEventListener("click", () => {
       const expanded = $("#userDropdown").hidden;
