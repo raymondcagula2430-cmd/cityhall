@@ -1212,9 +1212,21 @@
         </label>
 
         <label class="field" id="authBrgyField" hidden>
-          <span>Barangay</span>
-         <select id="aBarangay" required></select>
-        </label>
+  <span>Barangay</span>
+
+  <select
+    id="aBarangay"
+    required
+    aria-describedby="aBarangayError"
+  ></select>
+
+  <small
+    class="field-error"
+    id="aBarangayError"
+    data-auth-error="barangay"
+    role="alert"
+  ></small>
+</label>
 
         <div class="field consent" id="authConsentField" hidden>
           <label class="check-row">
