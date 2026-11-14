@@ -673,6 +673,7 @@
     email: "#aEmail",
     password: "#aPassword",
     confirm: "#aConfirm",
+    barangay: "#aBarangay",
     consent: "#aConsent"
   };
 
@@ -755,7 +756,13 @@
 
     const result = validateAuthField(field);
     const input = $(authInputs[field]);
-    const wrapper = input.closest(".field");
+
+if (!input) {
+  return { ok: false };
+}
+
+const wrapper = input.closest(".field");
+
     const error = $(`[data-auth-error="${field}"]`);
 
     const hasValue = field === "consent"
