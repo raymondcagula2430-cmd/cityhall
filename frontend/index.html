@@ -193,6 +193,11 @@
         <span data-i18n="nav_received">Received</span>
       </button>
 
+      <button type="button" data-nav="services">
+        <svg aria-hidden="true"><use href="#i-clipboard"></use></svg>
+        <span>Services</span>
+      </button>
+
       <button type="button" data-nav="admin" id="adminNavBtn" hidden>
         <svg aria-hidden="true"><use href="#i-user"></use></svg>
         <span>Admin</span>
@@ -441,6 +446,70 @@
       </div>
     </section>
 
+
+    <section
+      class="page"
+      id="servicesPage"
+      hidden
+      aria-labelledby="servicesTitle"
+    >
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Quezon City / City Programs</p>
+          <h1 id="servicesTitle">QC e-Services Directory</h1>
+          <p class="subtle">
+            A one-stop list of the online city services available to
+            Quezon City residents.
+          </p>
+        </div>
+      </div>
+
+      <div class="notice demo-notice" role="note">
+        <strong>Independent demo project.</strong>
+        This is not the official website of the Quezon City Government.
+        For real applications and payments, use the official
+        <a
+          href="https://quezoncity.gov.ph/program/qc-eservices/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >QC e-Services</a>.
+      </div>
+
+      <div class="services-intro card">
+        <p>
+          The Quezon City Government's QC e-Services platform lists
+          <strong>241 online services across 34 categories</strong>
+          (as of the page's May 11, 2026 update). The 15 main service
+          groups are listed below.
+        </p>
+
+        <label class="search-field">
+          <svg aria-hidden="true"><use href="#i-search"></use></svg>
+
+          <input
+            id="servicesSearch"
+            type="search"
+            placeholder="Search services…"
+            aria-label="Search services"
+          >
+        </label>
+      </div>
+
+      <div class="service-grid" id="servicesGrid"></div>
+
+      <div class="empty-state" id="servicesEmpty" hidden>
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <h3>No services found</h3>
+        <p>Try a different search word.</p>
+      </div>
+
+      <p class="subtle services-source">
+        Service names come from the official QC e-Services page.
+        Descriptions are short summaries written for this project;
+        see the official page for requirements, fees and processing.
+        Questions? Call the QC helpline <strong>122</strong>.
+      </p>
+    </section>
 
     <section
       class="page"
@@ -718,6 +787,11 @@
       <span data-i18n="footer_hotline">
         QC Hotline 122 · Emergency 911
       </span>
+    </span>
+
+    <span class="footer-note">
+      Independent demo project · not an official Quezon City
+      Government website.
     </span>
 
     <span data-i18n="footer_hours">
@@ -1089,7 +1163,7 @@
 
         <p class="auth-intro" id="authIntro" hidden>
           Create a resident account to submit and track service requests
-          with Quezon City Hall. All fields are required except barangay.
+          with Quezon City Hall. All fields are required.
         </p>
 
         <label class="field" id="authNameField" hidden>
@@ -1212,20 +1286,27 @@
         </label>
 
         <label class="field" id="authBrgyField" hidden>
-  <span>Barangay</span>
+          <span>Barangay</span>
 
-  <select
-    id="aBarangay"
-    required
-  ></select>
+          <select
+            id="aBarangay"
+            aria-required="true"
+            aria-describedby="aBarangayHint aBarangayError"
+          >
+            <option value="">Select your barangay</option>
+          </select>
 
-  <small
-    class="field-error"
-    id="aBarangayError"
-    data-auth-error="barangay"
-    role="alert"
-  ></small>
-</label>
+          <small class="field-hint" id="aBarangayHint">
+            Choose the barangay where you live (142 in Quezon City).
+          </small>
+
+          <small
+            class="field-error"
+            id="aBarangayError"
+            data-auth-error="barangay"
+            role="alert"
+          ></small>
+        </label>
 
         <div class="field consent" id="authConsentField" hidden>
           <label class="check-row">
