@@ -110,3 +110,139 @@
    * cannot simply repeat the person's own details.
    */
   function password(value, context = {}) {
+    const text = String(value ?? "");
+    const lower = text.toLowerCase();
+
+    const emailLocal = String(context.email || "")
+      .split("@")[0]
+      .toLowerCase();
+
+    const nameParts = String(context.name || "")
+      .toLowerCase()
+      .split(/[^\p{L}]+/u)
+      .filter(part => part.length >= 4);
+
+    const personal =
+      (emailLocal.length >= 4 && lower.includes(emailLocal)) ||
+      nameParts.some(part => lower.includes(part));
+
+    const common = COMMON_PASSWORDS.some(
+      word => lower === word || lower.replace(/[^a-z]/g, "") === word
+    );
+
+    const checks = [
+      {
+        id: "length",
+        label: "At least 12 characters",
+        pass: text.length >= 12
+      },
+      {
+        id: "lower",
+        label: "One lowercase letter",
+        pass: /\p{Ll}/u.test(text)
+      },
+      {
+        id: "upper",
+        label: "One uppercase letter",
+        pass: /\p{Lu}/u.test(text)
+      },
+      {
+        id: "number",
+        label: "One number",
+        pass: /\d/.test(text)
+      },
+      {
+        id: "symbol",
+        label: "One symbol (for example ! @ # $ %)",
+        pass: /[^\p{L}\d\s]/u.test(text)
+      },
+      {
+        id: "personal",
+        label: "Does not contain your name or email",
+        pass: text.length === 0 ? false : !personal
+      },
+      {
+        id: "common",
+        label: "Not a common password",
+        pass: text.length === 0 ? false : !common && !/^(.)\1+$/.test(text)
+      }
+    ];
+
+    const tooLong = text.length > 72;
+    const passed = checks.filter(check => check.pass).length;
+
+    let score = 0;
+
+    if (text.length > 0) {
+      score = 1;
+      if (passed >= 4) score = 2;
+      if (passed >= 6 && text.length >= 12) score = 3;
+      if (passed === checks.length && text.length >= 16) score = 4;
+      if (!checks[0].pass) score = Math.min(score, 1);
+      if (!checks[6].pass || !checks[5].pass) score = Math.min(score, 1);
+    }
+
+    const labels = ["", "Weak", "Fair", "Good", "Strong"];
+
+    const ok = !tooLong && checks.every(check => check.pass);
+
+    let message = "";
+
+    if (!text) {
+      message = "Create a password.";
+    } else if (tooLong) {
+      message = "Password must be 72 characters or fewer.";
+    } else if (!ok) {
+      const firstMissing = checks.find(check => !check.pass);
+      message = `Password requirement missing: ${firstMissing.label.toLowerCase()}.`;
+    }
+
+    return {
+      ok,
+      value: text,
+      message,
+      checks,
+      score,
+      label: labels[score]
+    };
+  }
+
+  function confirm(value, original) {
+    if (!value) {
+      return {
+        ok: false,
+        value,
+        message: "Re-enter your password to confirm it."
+      };
+    }
+
+    if (value !== original) {
+      return { ok: false, value, message: "Passwords do not match." };
+    }
+
+    return { ok: true, value, message: "" };
+  }
+
+  function loginPassword(value) {
+    const text = String(value ?? "");
+
+    if (!text) {
+      return { ok: false, value: text, message: "Enter your password." };
+    }
+
+    if (text.length > 1024) {
+      return { ok: false, value: text, message: "Password is too long." };
+    }
+
+    return { ok: true, value: text, message: "" };
+  }
+
+  window.PortalValidate = {
+    name,
+    email,
+    password,
+    confirm,
+    loginPassword,
+    normalizeName
+  };
+})();
