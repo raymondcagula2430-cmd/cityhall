@@ -919,7 +919,7 @@
           email,
           password,
           name,
-          barangayId: $("#aBarangay").value || null
+          barangayId: $("#aBarangay").value
         }
       });
 
