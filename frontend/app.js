@@ -1912,11 +1912,11 @@ $("#fCategory").addEventListener("change", () => {
   const selected = $("#fCategory").selectedOptions[0];
   const title = $("#fTitle");
 
-  if (!selected || selected.value === "") {
-    title.placeholder = "Describe the service or concern";
-    title.removeAttribute("aria-label");
-    return;
-  }
+  if (title.value.trim() === "" || title.dataset.categoryDescription === "true") {
+  title.value = qcServiceDescriptions[categoryName] ||
+    "Describe the service or concern";
+  title.dataset.categoryDescription = "true";
+}
 
   const categoryName = selected.textContent.trim();
   title.placeholder = qcServiceDescriptions[categoryName] ||
