@@ -11,11 +11,47 @@
     const category = document.getElementById("fCategory");
     const barangay = document.getElementById("fBarangay");
     const notes = document.getElementById("fNotes");
+    const priority = document.getElementById("fPriority");
+    const priorityField = document.getElementById("priorityField");
+    const status = document.getElementById("fStatus");
+    const statusField = status?.closest(".field");
 
     if (!dialog || !form || !type) return;
 
     function isResidentRequest() {
-      return type.value === "request";
+      return type.value === "request" && Boolean(name?.readOnly);
+    }
+
+    function applyRequestRolePolicy() {
+      const request = type.value === "request";
+      const residentRequest = isResidentRequest();
+
+      // Residents report the issue; service-desk staff assess its priority.
+      if (priorityField) {
+        priorityField.hidden = !request || residentRequest;
+      }
+
+      // Request status is assigned by the workflow and managed by staff,
+      // not selected in the submission form.
+      if (statusField) {
+        statusField.hidden = request;
+      }
+
+      // New resident requests use the system's normal default. Preserve
+      // the existing priority when a resident edits a previously submitted
+      // request, since the control is hidden from them.
+      if (
+        residentRequest &&
+        priority &&
+        document.getElementById("formEyebrow")?.textContent.trim() === "New record"
+      ) {
+        priority.value = "Normal";
+      }
+    }
+
+    function scheduleRequestRolePolicy() {
+      // app.js also updates field visibility on type changes. Run after it.
+      window.setTimeout(applyRequestRolePolicy, 0);
     }
 
     function getField(input) {
@@ -26,8 +62,7 @@
       if (!input) return;
 
       const wrapper = getField(input);
-      const error =
-        wrapper?.querySelector("[data-error], .field-error");
+      const error = wrapper?.querySelector("[data-error], .field-error");
 
       wrapper?.classList.toggle("invalid", Boolean(message));
       wrapper?.classList.toggle(
@@ -55,18 +90,14 @@
 
       setResult(
         name,
-        value.length >= 2
-          ? ""
-          : "Enter the resident's name."
+        value.length >= 2 ? "" : "Enter the resident's name."
       );
     }
 
     function validateCategory() {
       setResult(
         category,
-        category?.value
-          ? ""
-          : "Select a request category."
+        category?.value ? "" : "Select a request category."
       );
     }
 
@@ -84,9 +115,7 @@
 
       setResult(
         notes,
-        value.length <= 600
-          ? ""
-          : "Keep notes within 600 characters."
+        value.length <= 600 ? "" : "Keep notes within 600 characters."
       );
     }
 
@@ -112,59 +141,64 @@
     }
 
     function configureRequestMode() {
-      const enabled = isResidentRequest();
+      const enabled = type.value === "request";
 
-      dialog.classList.toggle(
-        "resident-request-form",
-        enabled
-      );
-      form.classList.toggle(
-        "resident-request-form",
-        enabled
-      );
+      dialog.classList.toggle("resident-request-form", enabled);
+      form.classList.toggle("resident-request-form", enabled);
+      applyRequestRolePolicy();
 
       if (!enabled) return;
 
-      if (title && !document.getElementById(
-        "residentRequestTitleHint"
-      )) {
+      if (title && !document.getElementById("residentRequestTitleHint")) {
         const hint = document.createElement("small");
         hint.id = "residentRequestTitleHint";
         hint.className = "field-hint";
         hint.textContent =
           "Describe the concern clearly in 5–100 characters.";
 
-        title.setAttribute(
-          "aria-describedby",
-          "residentRequestTitleHint"
-        );
+        title.setAttribute("aria-describedby", "residentRequestTitleHint");
         title.closest(".field")?.appendChild(hint);
       }
 
-      if (notes && !document.getElementById(
-        "residentRequestNotesCount"
-      )) {
+      if (notes && !document.getElementById("residentRequestNotesCount")) {
         const count = document.createElement("small");
         count.id = "residentRequestNotesCount";
         count.className = "character-count";
-        count.textContent =
-          `${notes.value.length} / 600 characters`;
+        count.textContent = `${notes.value.length} / 600 characters`;
 
-        notes.setAttribute(
-          "aria-describedby",
-          "residentRequestNotesCount"
-        );
+        notes.setAttribute("aria-describedby", "residentRequestNotesCount");
         notes.closest(".field")?.appendChild(count);
 
         notes.addEventListener("input", () => {
-          count.textContent =
-            `${notes.value.length} / 600 characters`;
+          count.textContent = `${notes.value.length} / 600 characters`;
           validateNotes();
         });
       }
     }
 
-    type.addEventListener("change", configureRequestMode);
+    type.addEventListener("change", () => {
+      configureRequestMode();
+      scheduleRequestRolePolicy();
+    });
+
+    // Run before app.js's submit handler so a resident cannot submit a
+    // user-selected priority. The service desk can assess it afterwards.
+    form.addEventListener("submit", event => {
+      if (isResidentRequest()) {
+        const isNewRequest =
+          document.getElementById("formEyebrow")?.textContent.trim() ===
+          "New record";
+
+        if (isNewRequest && priority) {
+          priority.value = "Normal";
+        }
+
+        if (!validateAll()) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      }
+    }, true);
 
     title?.addEventListener("blur", validateTitle);
     name?.addEventListener("blur", validateName);
@@ -179,7 +213,30 @@
       if (name.value.length > 0) validateName();
     });
 
-    form.addEventListener("submit", (event) => {
+    // app.js sets the resident name read-only and opens the dialog while
+    // preparing the form. Reapply the policy after those updates.
+    const observer = new MutationObserver(scheduleRequestRolePolicy);
+
+    observer.observe(dialog, {
+      attributes: true,
+      attributeFilter: ["open"]
+    });
+
+    if (name) {
+      observer.observe(name, {
+        attributes: true,
+        attributeFilter: ["readonly"]
+      });
+    }
+
+    if (priorityField) {
+      observer.observe(priorityField, {
+        attributes: true,
+        attributeFilter: ["hidden"]
+      });
+    }
+
+    form.addEventListener("submit", event => {
       if (isResidentRequest() && !validateAll()) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -187,13 +244,11 @@
     });
 
     configureRequestMode();
+    scheduleRequestRolePolicy();
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener(
-      "DOMContentLoaded",
-      init
-    );
+    document.addEventListener("DOMContentLoaded", init);
   } else {
     init();
   }
