@@ -1917,11 +1917,11 @@ $("#fCategory").addEventListener("change", () => {
     title.removeAttribute("aria-label");
     return;
   }
-  if (title.value.trim() === "" || title.dataset.categoryDescription === "true") {
-  title.value = qcServiceDescriptions[categoryName] ||
+  const categoryName = selected.textContent.trim();
+  title.placeholder = qcServiceDescriptions[categoryName] ||
     "Describe the service or concern";
-  title.dataset.categoryDescription = "true";
-}
+  title.setAttribute("aria-label", title.placeholder);
+});
   selectOptions(
     $("#fStatus"),
     statuses,
