@@ -2288,7 +2288,7 @@ const wrapper = input.closest(".field");
 
       $("#detailActions").innerHTML = `
         ${
-          canEdit(record)
+          isStaff() && canEdit(record)
             ? `<button
                 class="btn"
                 type="button"
@@ -2329,7 +2329,7 @@ const wrapper = input.closest(".field");
         }
 
         ${
-          canEdit(record)
+          isStaff() && canEdit(record)
             ? `<button
                 class="icon-btn danger"
                 type="button"
