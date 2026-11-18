@@ -1915,8 +1915,11 @@ const wrapper = input.closest(".field");
      * Residents do not choose status.
      * Status is managed by staff/admin only.
      */
-    $("#statusField").hidden = !isStaff();
+   const statusField = $("#statusField");
 
+if (statusField) {
+  statusField.hidden = !isStaff();
+}
     $("#fAmount").required = type === "transaction";
 
     /*
