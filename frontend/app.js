@@ -565,7 +565,15 @@
       );
 
       renderAll();
-      renderSavedViews();
+
+if(
+  activePage ===
+  "staffQueue"
+){
+  renderStaffQueue();
+}
+
+renderSavedViews();
 
     } finally {
       loading = false;
@@ -1828,30 +1836,30 @@ const wrapper = input.closest(".field");
 
 function renderAll() {
 
-    renderOverview();
+  renderOverview();
 
-    if (activePage === "admin") {
+  if (activePage === "admin") {
 
-        renderAdmin();
+    renderAdmin();
 
-    } else if (
-        activePage === "services"
-    ) {
+  } else if (
+    activePage === "services"
+  ) {
 
-        renderServices();
+    renderServices();
 
-    } else if (
-        activePage === "staffQueue"
-    ) {
+  } else if (
+    activePage === "staffQueue"
+  ) {
 
-        loadStaffQueue();
+    renderStaffQueue();
 
-    } else if (
-        activePage !== "overview"
-    ) {
+  } else if (
+    activePage !== "overview"
+  ) {
 
-        renderRecords();
-    }
+    renderRecords();
+  }
 }
 
   function navigate(destination) {
@@ -1879,8 +1887,13 @@ $("#adminPage").hidden =
 $("#servicesPage").hidden =
   destination !== "services";
 
-$("#staffQueuePage").hidden =
-  destination !== "staffQueue";
+const staffQueuePage =
+  $("#staffQueuePage");
+
+if (staffQueuePage) {
+  staffQueuePage.hidden =
+    destination !== "staffQueue";
+}
 
 $("#recordsPage").hidden =
   [
@@ -1889,6 +1902,8 @@ $("#recordsPage").hidden =
     "services",
     "staffQueue"
   ].includes(destination);
+
+    
     $$("[data-nav]").forEach(button => {
       const active = button.dataset.nav === destination;
 
@@ -2591,6 +2606,70 @@ $("#recordsPage").hidden =
       }
     }
   }
+function renderStaffQueue() {
+
+  const tbody =
+    document.getElementById(
+      "staffQueueBody"
+    );
+
+  if (!tbody) return;
+
+  let rows = records.filter(record =>
+    record.type === "request"
+  );
+
+  tbody.innerHTML =
+    rows.map(record => `
+
+      <tr>
+
+        <td>
+          ${record.ref || "-"}
+        </td>
+
+        <td>
+          ${record.title || "-"}
+        </td>
+
+        <td>
+          ${
+            record.category ||
+            "-"
+          }
+        </td>
+
+        <td>
+          ${record.status || "-"}
+        </td>
+
+        <td>
+          ${record.priority || "-"}
+        </td>
+
+        <td>
+          ${
+            record.ownerId
+              ? "Assigned"
+              : "Unassigned"
+          }
+        </td>
+
+      </tr>
+
+    `).join("");
+
+  if (!rows.length) {
+
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6">
+          No requests found.
+        </td>
+      </tr>
+    `;
+  }
+}
 
   /* =========================================================
      Saved views
