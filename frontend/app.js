@@ -1908,78 +1908,75 @@ const wrapper = input.closest(".field");
      ========================================================= */
 
   function configureRecordForm(type, record = null) {
-    const categories = lookups.categories.filter(
-      category => category.type === type
-    );
+  const categories = lookups.categories.filter(
+    category => category.type === type
+  );
 
-    const statuses = lookups.statuses
-      .filter(status => status.type === type)
-      .map(status => ({
-        value: status.code,
-        label: status.label
-      }));
+  const statuses = lookups.statuses
+    .filter(status => status.type === type)
+    .map(status => ({
+      value: status.code,
+      label: status.label
+    }));
 
-    selectOptions(
-      $("#fCategory"),
-      categories,
-      record?.categoryId || "",
-      "Select category"
-    );
-    $("#fCategory").addEventListener("change", () => {
-  const selected = $("#fCategory").selectedOptions[0];
-  const title = $("#fTitle");
+  selectOptions(
+    $("#fCategory"),
+    categories,
+    record?.categoryId || "",
+    "Select category"
+  );
 
-  if (!selected || selected.value === "") {
-    title.placeholder = "Describe the service or concern";
-    title.removeAttribute("aria-label");
-    return;
-  }
+  selectOptions(
+    "#fStatus",
+    statuses,
+    record?.statusCode || statuses[0]?.value || ""
+  );
 
-  const categoryName = selected.textContent.trim();
-  title.placeholder = qcServiceDescriptions[categoryName] ||
-    "Describe the service or concern";
-  title.setAttribute("aria-label", title.placeholder);
-});
+  $("#amountField").hidden = type !== "transaction";
+  $("#methodField").hidden = type !== "transaction";
 
-    selectOptions(
-      $("#fStatus"),
-      statuses,
-      record?.statusCode || statuses[0]?.value || ""
-    );
+  /*
+   * Residents do not choose priority.
+   * Staff and administrators manage priority.
+   */
+  $("#priorityField").hidden =
+    type !== "request" || !isStaff();
 
-    $("#amountField").hidden = type !== "transaction";
-    $("#methodField").hidden = type !== "transaction";
+  $("#locationField").hidden = type !== "request";
+  $("#sourceField").hidden = type !== "received";
 
-    $("#priorityField").hidden = type !== "request";
-    $("#locationField").hidden = type !== "request";
+  /*
+   * Residents do not choose status.
+   * Status is managed by staff/admin only.
+   */
+  $("#statusField").hidden = !isStaff();
 
-    $("#sourceField").hidden = type !== "received";
+  $("#fAmount").required = type === "transaction";
 
-    $("#fAmount").required = type === "transaction";
+  /*
+   * Status changes use the separate staff-only status endpoint.
+   */
+  $("#fStatus").disabled = true;
 
-    /*
-     * Status changes use the separate staff-only status endpoint.
-     */
-    $("#fStatus").disabled = true;
+  $("#fType").disabled =
+    Boolean(editingId) || !isStaff();
 
-    $("#fType").disabled = Boolean(editingId) || !isStaff();
+  $("#formTitle").textContent =
+    `${editingId ? "Edit" : "New"} ${config[type].singular.toLowerCase()}`;
 
-    $("#formTitle").textContent =
-      `${editingId ? "Edit" : "New"} ${config[type].singular.toLowerCase()}`;
+  $("#formEyebrow").textContent =
+    editingId ? "Update record" : "New record";
 
-    $("#formEyebrow").textContent =
-      editingId ? "Update record" : "New record";
+  $("#fTitleLabel").textContent =
+    type === "received"
+      ? "Document title"
+      : "Service / description";
 
-    $("#fTitleLabel").textContent =
-      type === "received"
-        ? "Document title"
-        : "Service / description";
-
-    $("#saveRecordBtn").textContent =
-      editingId
-        ? "Save changes"
-        : `Save ${config[type].singular.toLowerCase()}`;
-  }
+  $("#saveRecordBtn").textContent =
+    editingId
+      ? "Save changes"
+      : `Save ${config[type].singular.toLowerCase()}`;
+}
 
   function clearRecordErrors() {
     $$("[data-error]", $("#recordForm")).forEach(element => {
