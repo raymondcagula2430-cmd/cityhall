@@ -350,6 +350,13 @@
   function isResident() {
     return Boolean(currentUser && !isStaff());
   }
+    function isResident() {
+    return Boolean(currentUser && !isStaff());
+  }
+
+  function isPendingResidentRequest(record) {
+    // withdrawal code here
+  }
 
   function canEdit(record) {
     return Boolean(
