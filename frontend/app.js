@@ -1873,80 +1873,68 @@ const wrapper = input.closest(".field");
      Record forms
      ========================================================= */
 
-  function configureRecordForm(type, record = null) {
-    const categories = lookups.categories.filter(
-      category => category.type === type
-    );
+function configureRecordForm(type, record = null) {
+  const categories = lookups.categories.filter(
+    category => category.type === type
+  );
 
-    const statuses = lookups.statuses
-      .filter(status => status.type === type)
-      .map(status => ({
-        value: status.code,
-        label: status.label
-      }));
+  const statuses = lookups.statuses
+    .filter(status => status.type === type)
+    .map(status => ({
+      value: status.code,
+      label: status.label
+    }));
 
-    selectOptions(
-      $("#fCategory"),
-      categories,
-      record?.categoryId || "",
-      "Select category"
-    );
+  selectOptions(
+    $("#fCategory"),
+    categories,
+    record?.categoryId || "",
+    "Select category"
+  );
 
-    selectOptions(
-      "#fStatus",
-      statuses,
-      record?.statusCode || statuses[0]?.value || ""
-    );
+  selectOptions(
+    $("#fStatus"),
+    statuses,
+    record?.statusCode || statuses[0]?.value || ""
+  );
 
-    $("#amountField").hidden = type !== "transaction";
-    $("#methodField").hidden = type !== "transaction";
+  $("#amountField").hidden = type !== "transaction";
+  $("#methodField").hidden = type !== "transaction";
 
-    /*
-     * Residents do not choose priority.
-     * Staff and administrators manage priority.
-     */
-    $("#priorityField").hidden =
-      type !== "request" || !isStaff();
+  $("#priorityField").hidden =
+    type !== "request" || !isStaff();
 
-    $("#locationField").hidden = type !== "request";
-    $("#sourceField").hidden = type !== "received";
+  $("#locationField").hidden = type !== "request";
+  $("#sourceField").hidden = type !== "received";
 
-    /*
-     * Residents do not choose status.
-     * Status is managed by staff/admin only.
-     */
-   const statusField = $("#statusField");
+  const statusField = $("#statusField");
 
-if (statusField) {
-  statusField.hidden = !isStaff();
-}
-    $("#fAmount").required = type === "transaction";
-
-    /*
-     * Status changes use the separate staff-only status endpoint.
-     */
-    $("#fStatus").disabled = true;
-
-    $("#fType").disabled =
-      Boolean(editingId) || !isStaff();
-
-    $("#formTitle").textContent =
-      `${editingId ? "Edit" : "New"} ${config[type].singular.toLowerCase()}`;
-
-    $("#formEyebrow").textContent =
-      editingId ? "Update record" : "New record";
-
-    $("#fTitleLabel").textContent =
-      type === "received"
-        ? "Document title"
-        : "Service / description";
-
-    $("#saveRecordBtn").textContent =
-      editingId
-        ? "Save changes"
-        : `Save ${config[type].singular.toLowerCase()}`;
+  if (statusField) {
+    statusField.hidden = !isStaff();
   }
 
+  $("#fAmount").required = type === "transaction";
+  $("#fStatus").disabled = true;
+
+  $("#fType").disabled =
+    Boolean(editingId) || !isStaff();
+
+  $("#formTitle").textContent =
+    `${editingId ? "Edit" : "New"} ${config[type].singular.toLowerCase()}`;
+
+  $("#formEyebrow").textContent =
+    editingId ? "Update record" : "New record";
+
+  $("#fTitleLabel").textContent =
+    type === "received"
+      ? "Document title"
+      : "Service / description";
+
+  $("#saveRecordBtn").textContent =
+    editingId
+      ? "Save changes"
+      : `Save ${config[type].singular.toLowerCase()}`;
+}
   function clearRecordErrors() {
     $$("[data-error]", $("#recordForm")).forEach(element => {
       element.textContent = "";
