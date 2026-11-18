@@ -3506,7 +3506,60 @@ const wrapper = input.closest(".field");
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialize);
+    
   } else {
     initialize();
   }
 })();
+async function loadStaffQueue() {
+
+    const {
+        data,
+        error
+    } = await portalSupabase
+        .from("staff_queue")
+        .select("*");
+
+    if(error){
+
+        conso*e.error(error);
+
+        return;
+ *  }
+
+    const body =
+        docu*ent.getElementById(
+            "s*affQueueBody"
+        );
+
+    if(!*ody) return;
+
+    body.innerHTML =*        data.map(row => `
+        *   <tr>
+
+                <td>
+    *               ${row.tracking_no |* "-"}
+                </td>
+
+     *          <td>
+                   *${row.title}
+                </td>*
+                <td>
+            *       ${row.department || "-"}
+  *             </td>
+
+              * <td>
+                    ${row.st*tus_code}
+                </td>
+
+ *              <td>
+               *    ${row.priority}
+              * </td>
+
+                <td>
+     *              ${row.assigned_staff*|| "-"}
+                </td>
+
+   *        </tr>
+        `).join("");*
+}
