@@ -443,6 +443,19 @@
 
       return { ok: true, message: "Record deleted.", record: null };
     }
+        if (action === "withdraw") {
+      const { error } = await sb.rpc("withdraw_request", {
+        p_id: positiveId(body.id)
+      });
+
+      check(error);
+
+      return {
+        ok: true,
+        message: "Request withdrawn.",
+        record: null
+      };
+    }
 
     if (action === "restore") {
       const id = positiveId(body.id);
