@@ -2078,117 +2078,131 @@ const wrapper = input.closest(".field");
   }
 
   async function saveRecord(event) {
-    event.preventDefault();
+  event.preventDefault();
 
-    if (savingRecord || !requireLogin()) return;
+  if (savingRecord || !requireLogin()) return;
 
-    clearRecordErrors();
+  clearRecordErrors();
 
-    const type = $("#fType").value;
-    const title = $("#fTitle").value.trim();
-    const name = $("#fName").value.trim();
-    const email = $("#fEmail").value.trim();
-    const date = $("#fDate").value;
-    const amount = $("#fAmount").value.trim();
+  const type = isStaff()
+    ? $("#fType").value
+    : "request";
 
-    let valid = true;
+  const title = $("#fTitle").value.trim();
+  const name = $("#fName").value.trim();
+  const email = $("#fEmail").value.trim();
+  const date = $("#fDate").value;
+  const amount = $("#fAmount").value.trim();
 
-    if (!title) {
-      recordError("title", "Enter a service or document title.");
-      valid = false;
-    }
+  let valid = true;
 
-    if (!name) {
-      recordError("name", "Enter a resident or sender name.");
-      valid = false;
-    }
-
-    if (email && !$("#fEmail").validity.valid) {
-      recordError("email", "Enter a valid email address.");
-      valid = false;
-    }
-
-    if (!date || !$("#fDate").validity.valid) {
-      recordError("date", "Select a valid date.");
-      valid = false;
-    }
-
-    if (!$("#fCategory").value) {
-      recordError("category", "Select a category.");
-      valid = false;
-    }
-
-    if (
-      type === "transaction" &&
-      !/^\d{1,8}(?:\.\d{1,2})?$/.test(amount)
-    ) {
-      recordError(
-        "amount",
-        "Enter an amount from 0 to 99,999,999.99."
-      );
-      valid = false;
-    }
-
-    if (!valid) {
-      $(".field.invalid input, .field.invalid select")?.focus();
-      return;
-    }
-
-    savingRecord = true;
-
-    const button = $("#saveRecordBtn");
-    const originalLabel = button.textContent;
-
-    button.disabled = true;
-    button.textContent = "Saving…";
-
-    let saved = false;
-
-    try {
-      await api("records.php", {
-        method: "POST",
-        body: {
-          action: editingId ? "update" : "create",
-          id: editingId,
-          type,
-          title,
-          name,
-          email,
-          date,
-          categoryId: $("#fCategory").value,
-          barangayId: $("#fBarangay").value || null,
-          priority: $("#fPriority").value,
-          amount: type === "transaction" ? amount : "0.00",
-          method: $("#fMethod").value,
-          source: $("#fSource").value,
-          location: $("#fLocation").value.trim(),
-          notes: $("#fNotes").value.trim()
-        }
-      });
-
-      saved = true;
-
-      closeDialog("recordDialog");
-
-      await refreshData();
-
-      toast(editingId ? "Record updated." : "Record created.");
-
-    } catch (error) {
-      toast(
-        saved
-          ? "The record was saved, but the display could not refresh. " +
-            error.message
-          : error.message
-      );
-
-    } finally {
-      savingRecord = false;
-      button.disabled = false;
-      button.textContent = originalLabel;
-    }
+  if (!title) {
+    recordError("title", "Enter a service or document title.");
+    valid = false;
   }
 
+  if (!name) {
+    recordError("name", "Enter a resident or sender name.");
+    valid = false;
+  }
+
+  if (email && !$("#fEmail").validity.valid) {
+    recordError("email", "Enter a valid email address.");
+    valid = false;
+  }
+
+  if (!date || !$("#fDate").validity.valid) {
+    recordError("date", "Select a valid date.");
+    valid = false;
+  }
+
+  if (!$("#fCategory").value) {
+    recordError("category", "Select a category.");
+    valid = false;
+  }
+
+  if (
+    type === "transaction" &&
+    !/^\d{1,8}(?:\.\d{1,2})?$/.test(amount)
+  ) {
+    recordError(
+      "amount",
+      "Enter an amount from 0 to 99,999,999.99."
+    );
+
+    valid = false;
+  }
+
+  if (!valid) {
+    $(".field.invalid input, .field.invalid select")?.focus();
+    return;
+  }
+
+  savingRecord = true;
+
+  const button = $("#saveRecordBtn");
+  const originalLabel = button.textContent;
+
+  button.disabled = true;
+  button.textContent = "Saving…";
+
+  let saved = false;
+
+  try {
+    const requestBody = {
+      action: editingId ? "update" : "create",
+      id: editingId,
+      type,
+      title,
+      name,
+      email,
+      date,
+      categoryId: $("#fCategory").value,
+      barangayId: $("#fBarangay").value || null,
+      amount: type === "transaction" ? amount : "0.00",
+      method: $("#fMethod").value,
+      source: $("#fSource").value,
+      location: $("#fLocation").value.trim(),
+      notes: $("#fNotes").value.trim()
+    };
+
+    /*
+     * Only staff/admin may submit priority.
+     * Residents receive the backend default: Normal.
+     */
+    if (isStaff()) {
+      requestBody.priority = $("#fPriority").value;
+    }
+
+    await api("records.php", {
+      method: "POST",
+      body: requestBody
+    });
+
+    saved = true;
+
+    closeDialog("recordDialog");
+
+    await refreshData();
+
+    toast(
+      editingId ? "Record updated." : "Record created."
+    );
+
+  } catch (error) {
+    toast(
+      saved
+        ? "The record was saved, but the display could not refresh. " +
+          error.message
+        : error.message
+    );
+
+  } finally {
+    savingRecord = false;
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
   /* =========================================================
      Record details and status updates
      ========================================================= */
