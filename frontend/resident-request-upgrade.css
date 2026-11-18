@@ -1,66 +1,225 @@
 #recordDialog.resident-request-form {
-  width: min(720px, calc(100vw - 32px));
+  width: min(760px, calc(100vw - 32px));
 }
 
 .resident-request-form .form-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 16px;
+  gap: 16px 18px;
 }
 
 .resident-request-form .field {
-  min-width: 0;
-  margin: 0;
-}
-
-.resident-request-form .field.valid input,
-.resident-request-form .field.valid select,
-.resident-request-form .field.valid textarea {
-  border-color: var(--green);
-}
-
-.resident-request-form .field.invalid input,
-.resident-request-form .field.invalid select,
-.resident-request-form .field.invalid textarea {
-  border-color: var(--red);
-  background: var(--red-soft);
+	@@ -26,11 +26,13 @@
 }
 
 .resident-request-form .field-error:not(:empty) {
+  display: block;
   min-height: 17px;
   margin-top: 5px;
   color: var(--red);
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.4;
 }
 
 .resident-request-form .field-hint,
-.resident-request-form .character-count {
-  display: block;
+	@@ -39,28 +41,200 @@
   margin-top: 5px;
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.45;
 }
 
 .resident-request-form .character-count {
   text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.resident-request-form .character-count.near-limit {
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.resident-request-form .character-count.over-limit {
+  color: var(--red);
+  font-weight: 800;
+}
+
+.request-required {
+  margin-left: 5px;
+  color: var(--red);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.request-urgency {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  grid-column: 1 / -1;
+}
+
+.request-urgency legend {
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.request-urgency.invalid .urgency-options {
+  outline: 2px solid var(--red);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+.urgency-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.urgency-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 78px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.urgency-option:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+}
+
+.urgency-option:has(input:checked) {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+  box-shadow: 0 0 0 2px rgba(27, 79, 145, 0.08);
+}
+
+.urgency-option input {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  margin: 2px 0 0;
+  accent-color: var(--blue);
+}
+
+.urgency-option span,
+.urgency-option strong,
+.urgency-option small {
+  display: block;
+}
+
+.urgency-option strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.urgency-option small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.request-emergency {
+  padding: 10px 12px;
+  margin: 11px 0 0;
+  border: 1px solid #efc3a2;
+  border-radius: 9px;
+  background: #fff7ed;
+  color: #7a3512;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.request-success-dialog {
+  width: min(480px, calc(100vw - 32px));
+}
+
+.request-success-content {
+  padding: 26px;
+  text-align: center;
+}
+
+.request-success-mark {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.request-success-content h2 {
+  margin: 6px 0 10px;
+}
+
+.request-success-content p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.request-success-content .eyebrow {
+  margin: 0;
+  color: var(--green);
+  font-weight: 800;
+}
+
+.request-success-next {
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: var(--surface-soft);
+  font-size: 13px;
 }
 
 @media (max-width: 640px) {
   #recordDialog.resident-request-form {
     width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
   }
 
   .resident-request-form .form-grid {
     grid-template-columns: 1fr;
   }
 
-  .resident-request-form .span-2 {
+  .resident-request-form .span-2,
+  .request-urgency {
     grid-column: 1;
+  }
+
+  .urgency-options {
+    grid-template-columns: 1fr;
+  }
+
+  .urgency-option {
+    min-height: 0;
   }
 
   .resident-request-form .dialog-foot {
     position: sticky;
     bottom: 0;
     z-index: 2;
+    background: var(--surface);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urgency-option {
+    transition: none;
   }
 }
