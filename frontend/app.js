@@ -48,7 +48,7 @@
     "GCash",
     "Credit / Debit Card"
   ];
-const qcServiceDescriptions = {
+  const qcServiceDescriptions = {
   "QCitizen ID": "Request or update a QCitizen ID service",
   "Clearances, Permits, and Zoning": "Request a clearance, permit, or zoning service",
   "Assistance, Welfare, and Facilities": "Request assistance, welfare, or facility support",
@@ -66,6 +66,7 @@ const qcServiceDescriptions = {
   "Startup QC Program": "Request startup program assistance",
   "Other / Not listed": "Describe the service or concern"
 };
+
   const documentSources = [
     "Walk-in",
     "Email",
@@ -104,7 +105,6 @@ const qcServiceDescriptions = {
   let draggedId = null;
   let loading = false;
   let savingRecord = false;
-  let withdrawing = false;
   let authSubmitting = false;
   let advancing = false;
   let recordLimit = 500;
@@ -349,6 +349,13 @@ const qcServiceDescriptions = {
 
   function isResident() {
     return Boolean(currentUser && !isStaff());
+  }
+    function isResident() {
+    return Boolean(currentUser && !isStaff());
+  }
+
+  function isPendingResidentRequest(record) {
+    // withdrawal code here
   }
 
   function canEdit(record) {
@@ -1738,8 +1745,8 @@ const wrapper = input.closest(".field");
               ${icon("i-eye")}
             </button>
 
-            ${
-              editable
+                        ${
+              isStaff() && editable
                 ? `
                   <button
                     type="button"
@@ -1759,7 +1766,17 @@ const wrapper = input.closest(".field");
                     ${icon("i-trash")}
                   </button>
                 `
-                : ""
+                : isPendingResidentRequest(record)
+                  ? `
+                    <button
+                      type="button"
+                      class="btn small danger-quiet"
+                      data-withdraw="${escapeHTML(id)}"
+                    >
+                      Withdraw
+                    </button>
+                  `
+                  : ""
             }
           </td>
         </tr>
@@ -1890,7 +1907,7 @@ const wrapper = input.closest(".field");
      Record forms
      ========================================================= */
 
-function configureRecordForm(type, record = null) {
+  function configureRecordForm(type, record = null) {
   const categories = lookups.categories.filter(
     category => category.type === type
   );
@@ -1908,22 +1925,9 @@ function configureRecordForm(type, record = null) {
     record?.categoryId || "",
     "Select category"
   );
-$("#fCategory").addEventListener("change", () => {
-  const selected = $("#fCategory").selectedOptions[0];
-  const title = $("#fTitle");
 
-    if (!selected || selected.value === "") {
-    title.placeholder = "Describe the service or concern";
-    title.removeAttribute("aria-label");
-    return;
-  }
-  const categoryName = selected.textContent.trim();
-  title.placeholder = qcServiceDescriptions[categoryName] ||
-    "Describe the service or concern";
-  title.setAttribute("aria-label", title.placeholder);
-});
   selectOptions(
-    $("#fStatus"),
+    "#fStatus",
     statuses,
     record?.statusCode || statuses[0]?.value || ""
   );
@@ -1931,19 +1935,27 @@ $("#fCategory").addEventListener("change", () => {
   $("#amountField").hidden = type !== "transaction";
   $("#methodField").hidden = type !== "transaction";
 
+  /*
+   * Residents do not choose priority.
+   * Staff and administrators manage priority.
+   */
   $("#priorityField").hidden =
     type !== "request" || !isStaff();
 
   $("#locationField").hidden = type !== "request";
   $("#sourceField").hidden = type !== "received";
 
-  const statusField = $("#statusField");
-
-  if (statusField) {
-    statusField.hidden = !isStaff();
-  }
+  /*
+   * Residents do not choose status.
+   * Status is managed by staff/admin only.
+   */
+  $("#statusField").hidden = !isStaff();
 
   $("#fAmount").required = type === "transaction";
+
+  /*
+   * Status changes use the separate staff-only status endpoint.
+   */
   $("#fStatus").disabled = true;
 
   $("#fType").disabled =
@@ -1965,6 +1977,7 @@ $("#fCategory").addEventListener("change", () => {
       ? "Save changes"
       : `Save ${config[type].singular.toLowerCase()}`;
 }
+
   function clearRecordErrors() {
     $$("[data-error]", $("#recordForm")).forEach(element => {
       element.textContent = "";
@@ -2065,132 +2078,131 @@ $("#fCategory").addEventListener("change", () => {
   }
 
   async function saveRecord(event) {
-    event.preventDefault();
+  event.preventDefault();
 
-    if (savingRecord || !requireLogin()) return;
+  if (savingRecord || !requireLogin()) return;
 
-    clearRecordErrors();
+  clearRecordErrors();
 
-    const type = isStaff()
-      ? $("#fType").value
-      : "request";
+  const type = isStaff()
+    ? $("#fType").value
+    : "request";
 
-    const title = $("#fTitle").value.trim();
-    const name = $("#fName").value.trim();
-    const email = $("#fEmail").value.trim();
-    const date = $("#fDate").value;
-    const amount = $("#fAmount").value.trim();
+  const title = $("#fTitle").value.trim();
+  const name = $("#fName").value.trim();
+  const email = $("#fEmail").value.trim();
+  const date = $("#fDate").value;
+  const amount = $("#fAmount").value.trim();
 
-    let valid = true;
+  let valid = true;
 
-    if (!title) {
-      recordError("title", "Enter a service or document title.");
-      valid = false;
-    }
-
-    if (!name) {
-      recordError("name", "Enter a resident or sender name.");
-      valid = false;
-    }
-
-    if (email && !$("#fEmail").validity.valid) {
-      recordError("email", "Enter a valid email address.");
-      valid = false;
-    }
-
-    if (!date || !$("#fDate").validity.valid) {
-      recordError("date", "Select a valid date.");
-      valid = false;
-    }
-
-    if (!$("#fCategory").value) {
-      recordError("category", "Select a category.");
-      valid = false;
-    }
-
-    if (
-      type === "transaction" &&
-      !/^\d{1,8}(?:\.\d{1,2})?$/.test(amount)
-    ) {
-      recordError(
-        "amount",
-        "Enter an amount from 0 to 99,999,999.99."
-      );
-
-      valid = false;
-    }
-
-    if (!valid) {
-      $(".field.invalid input, .field.invalid select")?.focus();
-      return;
-    }
-
-    savingRecord = true;
-
-    const button = $("#saveRecordBtn");
-    const originalLabel = button.textContent;
-
-    button.disabled = true;
-    button.textContent = "Saving…";
-
-    let saved = false;
-
-    try {
-      const requestBody = {
-        action: editingId ? "update" : "create",
-        id: editingId,
-        type,
-        title,
-        name,
-        email,
-        date,
-        categoryId: $("#fCategory").value,
-        barangayId: $("#fBarangay").value || null,
-        amount: type === "transaction" ? amount : "0.00",
-        method: $("#fMethod").value,
-        source: $("#fSource").value,
-        location: $("#fLocation").value.trim(),
-        notes: $("#fNotes").value.trim()
-      };
-
-      /*
-       * Only staff/admin may submit priority.
-       * Residents receive the backend default: Normal.
-       */
-      if (isStaff()) {
-        requestBody.priority = $("#fPriority").value;
-      }
-
-      await api("records.php", {
-        method: "POST",
-        body: requestBody
-      });
-
-      saved = true;
-
-      closeDialog("recordDialog");
-
-      await refreshData();
-
-      toast(
-        editingId ? "Record updated." : "Record created."
-      );
-
-    } catch (error) {
-      toast(
-        saved
-          ? "The record was saved, but the display could not refresh. " +
-            error.message
-          : error.message
-      );
-
-    } finally {
-      savingRecord = false;
-      button.disabled = false;
-      button.textContent = originalLabel;
-    }
+  if (!title) {
+    recordError("title", "Enter a service or document title.");
+    valid = false;
   }
 
+  if (!name) {
+    recordError("name", "Enter a resident or sender name.");
+    valid = false;
+  }
+
+  if (email && !$("#fEmail").validity.valid) {
+    recordError("email", "Enter a valid email address.");
+    valid = false;
+  }
+
+  if (!date || !$("#fDate").validity.valid) {
+    recordError("date", "Select a valid date.");
+    valid = false;
+  }
+
+  if (!$("#fCategory").value) {
+    recordError("category", "Select a category.");
+    valid = false;
+  }
+
+  if (
+    type === "transaction" &&
+    !/^\d{1,8}(?:\.\d{1,2})?$/.test(amount)
+  ) {
+    recordError(
+      "amount",
+      "Enter an amount from 0 to 99,999,999.99."
+    );
+
+    valid = false;
+  }
+
+  if (!valid) {
+    $(".field.invalid input, .field.invalid select")?.focus();
+    return;
+  }
+
+  savingRecord = true;
+
+  const button = $("#saveRecordBtn");
+  const originalLabel = button.textContent;
+
+  button.disabled = true;
+  button.textContent = "Saving…";
+
+  let saved = false;
+
+  try {
+    const requestBody = {
+      action: editingId ? "update" : "create",
+      id: editingId,
+      type,
+      title,
+      name,
+      email,
+      date,
+      categoryId: $("#fCategory").value,
+      barangayId: $("#fBarangay").value || null,
+      amount: type === "transaction" ? amount : "0.00",
+      method: $("#fMethod").value,
+      source: $("#fSource").value,
+      location: $("#fLocation").value.trim(),
+      notes: $("#fNotes").value.trim()
+    };
+
+    /*
+     * Only staff/admin may submit priority.
+     * Residents receive the backend default: Normal.
+     */
+    if (isStaff()) {
+      requestBody.priority = $("#fPriority").value;
+    }
+
+    await api("records.php", {
+      method: "POST",
+      body: requestBody
+    });
+
+    saved = true;
+
+    closeDialog("recordDialog");
+
+    await refreshData();
+
+    toast(
+      editingId ? "Record updated." : "Record created."
+    );
+
+  } catch (error) {
+    toast(
+      saved
+        ? "The record was saved, but the display could not refresh. " +
+          error.message
+        : error.message
+    );
+
+  } finally {
+    savingRecord = false;
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
   /* =========================================================
      Record details and status updates
      ========================================================= */
@@ -2287,7 +2299,7 @@ $("#fCategory").addEventListener("change", () => {
 
       $("#detailActions").innerHTML = `
         ${
-          canEdit(record)
+          isStaff() && canEdit(record)
             ? `<button
                 class="btn"
                 type="button"
@@ -2328,7 +2340,7 @@ $("#fCategory").addEventListener("change", () => {
         }
 
         ${
-          canEdit(record)
+          isStaff() && canEdit(record)
             ? `<button
                 class="icon-btn danger"
                 type="button"
