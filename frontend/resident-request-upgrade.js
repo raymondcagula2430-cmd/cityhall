@@ -181,7 +181,7 @@
 
     form.addEventListener("submit", (event) => {
       if (isResidentRequest() && !validateAll()) {
-        event.preventEventDefault;
+        event.preventDefault;
         event.stopImmediatePropagation();
       }
     });
