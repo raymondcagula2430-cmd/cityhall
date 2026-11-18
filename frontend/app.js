@@ -2340,21 +2340,6 @@ const wrapper = input.closest(".field");
               </button>`
             : ""
         }
-              $("#detailActions").innerHTML = `
-        ${existing buttons here}
-
-        ${
-          isPendingResidentRequest(record)
-            ? `<button
-                class="btn danger-quiet"
-                type="button"
-                data-withdraw="${escapeHTML(record.id)}"
-              >
-                Withdraw request
-              </button>`
-            : ""
-        }
-      `;
       `;
 
       openDialog("detailDialog");
