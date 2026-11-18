@@ -1745,8 +1745,8 @@ const wrapper = input.closest(".field");
               ${icon("i-eye")}
             </button>
 
-            ${
-              editable
+                        ${
+              isStaff() && editable
                 ? `
                   <button
                     type="button"
@@ -1766,7 +1766,17 @@ const wrapper = input.closest(".field");
                     ${icon("i-trash")}
                   </button>
                 `
-                : ""
+                : isPendingResidentRequest(record)
+                  ? `
+                    <button
+                      type="button"
+                      class="btn small danger-quiet"
+                      data-withdraw="${escapeHTML(id)}"
+                    >
+                      Withdraw
+                    </button>
+                  `
+                  : ""
             }
           </td>
         </tr>
