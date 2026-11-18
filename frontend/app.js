@@ -48,7 +48,24 @@
     "GCash",
     "Credit / Debit Card"
   ];
-
+const qcServiceDescriptions = {
+  "QCitizen ID": "Request or update a QCitizen ID service",
+  "Clearances, Permits, and Zoning": "Request a clearance, permit, or zoning service",
+  "Assistance, Welfare, and Facilities": "Request assistance, welfare, or facility support",
+  "Finance and Taxation": "Request help with a finance or taxation concern",
+  "Health": "Request a health service or assistance",
+  "School and Education": "Request a school or education service",
+  "People’s Corner": "Submit a concern to the People’s Corner",
+  "Community and Civic Services": "Request a community or civic service",
+  "Civil Registry Online Services": "Request a civil registry document or service",
+  "Civil Society Organization (CSO)": "Request assistance related to a Civil Society Organization",
+  "Real Property One-Stop-Shop": "Request real property assistance",
+  "Market One-Stop-Shop": "Request assistance with a market or market operation",
+  "Business One Stop Shop": "Request business permit or registration assistance",
+  "Occupational (Work) Permit": "Request assistance with an occupational work permit",
+  "Startup QC Program": "Request startup program assistance",
+  "Other / Not listed": "Describe the service or concern"
+};
   const documentSources = [
     "Walk-in",
     "Email",
