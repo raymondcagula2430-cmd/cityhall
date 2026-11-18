@@ -1826,17 +1826,33 @@ const wrapper = input.closest(".field");
     $("#bulkAdvanceBtn").hidden = !isStaff();
   }
 
-  function renderAll() {
+function renderAll() {
+
     renderOverview();
 
     if (activePage === "admin") {
-      renderAdmin();
-    } else if (activePage === "services") {
-      renderServices();
-    } else if (activePage !== "overview") {
-      renderRecords();
+
+        renderAdmin();
+
+    } else if (
+        activePage === "services"
+    ) {
+
+        renderServices();
+
+    } else if (
+        activePage === "staffQueue"
+    ) {
+
+        loadStaffQueue();
+
+    } else if (
+        activePage !== "overview"
+    ) {
+
+        renderRecords();
     }
-  }
+}
 
   function navigate(destination) {
     if (destination === "admin" && !isAdmin()) {
@@ -1854,13 +1870,25 @@ const wrapper = input.closest(".field");
     currentPage = 1;
     selectedIds.clear();
 
-    $("#overviewPage").hidden = destination !== "overview";
-    $("#adminPage").hidden = destination !== "admin";
-    $("#servicesPage").hidden = destination !== "services";
+    $("#overviewPage").hidden =
+  destination !== "overview";
 
-    $("#recordsPage").hidden = ["overview", "admin", "services"]
-      .includes(destination);
+$("#adminPage").hidden =
+  destination !== "admin";
 
+$("#servicesPage").hidden =
+  destination !== "services";
+
+$("#staffQueuePage").hidden =
+  destination !== "staffQueue";
+
+$("#recordsPage").hidden =
+  [
+    "overview",
+    "admin",
+    "services",
+    "staffQueue"
+  ].includes(destination);
     $$("[data-nav]").forEach(button => {
       const active = button.dataset.nav === destination;
 
@@ -3503,6 +3531,64 @@ const wrapper = input.closest(".field");
       console.error("Portal initialization failed:", error);
     }
   }
+  async function loadStaffQueue() {
+
+    const body =
+        document.getElementById(
+            "staffQueueBody"
+        );
+
+    if (!body) return;
+
+    try {
+
+        const { data, error } =
+            await window.supabaseClient
+            .from("staff_queue")
+            .select("*");
+
+        if (error) {
+            console.error(error);
+            return;
+        }
+
+        body.innerHTML =
+            data.map(row => `
+                <tr>
+                    <td>
+                        ${row.tracking_no || "-"}
+                    </td>
+
+                    <td>
+                        ${row.title || "-"}
+                    </td>
+
+                    <td>
+                        ${row.department || "-"}
+                    </td>
+
+                    <td>
+                        ${row.status_code || "-"}
+                    </td>
+
+                    <td>
+                        ${row.priority || "-"}
+                    </td>
+
+                    <td>
+                        ${row.assigned_staff || "-"}
+                    </td>
+                </tr>
+            `).join("");
+
+    } catch(err) {
+
+        console.error(
+            "Staff Queue Error:",
+            err
+        );
+    }
+}
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initialize);
