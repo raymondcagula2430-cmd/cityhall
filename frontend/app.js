@@ -1908,6 +1908,21 @@ const wrapper = input.closest(".field");
       record?.categoryId || "",
       "Select category"
     );
+    $("#fCategory").addEventListener("change", () => {
+  const selected = $("#fCategory").selectedOptions[0];
+  const title = $("#fTitle");
+
+  if (!selected || selected.value === "") {
+    title.placeholder = "Describe the service or concern";
+    title.removeAttribute("aria-label");
+    return;
+  }
+
+  const categoryName = selected.textContent.trim();
+  title.placeholder = qcServiceDescriptions[categoryName] ||
+    "Describe the service or concern";
+  title.setAttribute("aria-label", title.placeholder);
+});
 
     selectOptions(
       $("#fStatus"),
